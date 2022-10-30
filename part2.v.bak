@@ -21,7 +21,7 @@ module part2(iResetn,iPlotBox,iBlack,iColour,iLoadX,iXY_Coord,iClock,oX,oY,oColo
 
 /**********************************************************************/
     // lots of wires to connect our datapath and control
-    wire Control_A, Control_B, Control_C,flag,black_en;
+    wire Control_A, Control_B, Control_C,flage,black_en;
     
 
     control control(
@@ -35,7 +35,7 @@ module part2(iResetn,iPlotBox,iBlack,iColour,iLoadX,iXY_Coord,iClock,oX,oY,oColo
 	  .Control_B(Control_B), 
 	  .Control_C (Control_C),
 	  .oPlot(oPlot),
-	  .flag(flag)
+	  .flage(flage)
     );
 
     datapath datapath(
@@ -46,7 +46,7 @@ module part2(iResetn,iPlotBox,iBlack,iColour,iLoadX,iXY_Coord,iClock,oX,oY,oColo
 	  .Control_A(Control_A),
 	  .Control_B(Control_B),
 	  .Control_C(Control_C),
-     .flag(flag),
+     .flage(flage),
 	  .black_en(black_en),
      .oX(oX),
 	  .oY(oY),
@@ -67,7 +67,7 @@ module control(
 	 output reg  Control_B, 
 	 output reg Control_C ,
 	 output reg oPlot,
-	 output reg flag,
+	 output reg flage,
 	 output reg black_en
     );
 
@@ -159,7 +159,7 @@ module control(
 						Control_B<=1'b0;
 						Control_C<=1'b0;
 						oPlot<=1'b0;
-						flag<=1'b0;
+						flage<=1'b0;
 						black_en<=1'b0;
             end
 	 else 
@@ -170,7 +170,7 @@ module control(
 									Control_B<=Control_B;
 									Control_C<=Control_C;
 									oPlot<=oPlot;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							end
             iLoadX_H0: begin
@@ -178,7 +178,7 @@ module control(
 									Control_B<=1'b0;
 									Control_C<=1'b1;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							  end
             iLoadX_L0: begin         //x
@@ -186,7 +186,7 @@ module control(
 									Control_B<=1'b0;
 									Control_C<=1'b1;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							 end
             iLoadX_H1: begin
@@ -194,7 +194,7 @@ module control(
 									Control_B<=1'b1;
 									Control_C<=1'b0;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							  end
             iLoadX_L1: begin       //y
@@ -202,7 +202,7 @@ module control(
 									Control_B<=1'b1;
 									Control_C<=1'b0;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							end
 				iPlotBox_H: begin
@@ -210,7 +210,7 @@ module control(
 									Control_B<=1'b1;
 									Control_C<=1'b0;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							   end
 				iPlotBox_L:begin      //plot
@@ -218,7 +218,7 @@ module control(
 									Control_B<=1'b1;
 									Control_C<=1'b1;
 									oPlot<=1'b1;
-									flag<=1'b1;
+									flage<=1'b1;
 									black_en<=1'b0;
 							  end
             iBlack_H: begin
@@ -226,7 +226,7 @@ module control(
 									Control_B<=1'b0;
 									Control_C<=1'b0;
 									oPlot<=1'b0;
-									flag<=1'b0;
+									flage<=1'b0;
 									black_en<=1'b0;
 							 end
 				iBlack_L: begin    //black
@@ -234,7 +234,7 @@ module control(
 									Control_B<=1'b1;
 									Control_C<=1'b1;
 									oPlot<=oPlot;
-									flag<=1'b1;
+									flage<=1'b1;
 									black_en<=1'b1;
 							end
             default:  begin
@@ -265,7 +265,7 @@ module datapath(
 	 input Control_A,
 	 input Control_B,
 	 input Control_C,
-    input flag,
+    input flage,
 	 input black_en,
     output reg [7:0] oX,
 	 output reg [6:0] oY,
@@ -343,7 +343,7 @@ module datapath(
 				  oColour<=3'd0;
 				  oX <= oX_r;
 		end
-       else if(flag)
+       else if(flage)
 		begin 
 			oX <= oX_r;
 			oColour<=iColour;
@@ -370,7 +370,7 @@ module datapath(
 	begin
 		oY<= oY_r;
 	end
-	else if(flag)	
+	else if(flage)	
 		oY <= oY_r;
 	else if((oX == oX_r+2'd3) && (oY == oY_r+2'd3))
 		oY <= oY;

@@ -1,0 +1,263 @@
+module part3(iColour,iResetn,iClock,oX,oY,oColour,oPlot);
+   input wire [2:0] iColour;
+   input wire 	    iResetn;
+   input wire 	    iClock;
+   output reg [7:0] oX;         // VGA pixel coordinates
+   output reg [6:0] oY;
+   
+   output reg [2:0] oColour;     // VGA pixel colour (0-7)
+   output reg 	     oPlot;       // Pixel drawn enable
+
+   parameter
+     X_SCREENSIZE = 9,  // X screen width for starting resolution and fake_fpga
+     Y_SCREENSIZE = 7,  // Y screen height for starting resolution and fake_fpga
+     CLOCKS_PER_SECOND = 1200, // 5 KHZ for fake_fpga
+     X_BOXSIZE = 8'd4,   // Box X dimension
+     Y_BOXSIZE = 7'd4,   // Box Y dimension
+     X_MAX = X_SCREENSIZE - 1 - X_BOXSIZE, // 0-based and account for box width
+     Y_MAX = Y_SCREENSIZE - 1 - Y_BOXSIZE,
+     PULSES_PER_SIXTIETH_SECOND = CLOCKS_PER_SECOND / 60;
+	  
+reg cnt_en;
+reg [4:0]DelayCounter;
+wire cnt_pluse=(DelayCounter==5'd19)? 1'b1:1'b0;
+always@(posedge iClock)
+begin
+    if(!iResetn)
+         DelayCounter <= 5'd0;
+    else if(DelayCounter==5'd19)
+          DelayCounter <= 5'd0;
+	 else if(cnt_en)
+	       DelayCounter <=DelayCounter+1'b1;
+	 else 
+			 DelayCounter <= 5'd0;
+end   
+
+reg [4:0]FrameCounter;
+wire move_pixel=(FrameCounter==5'd14)? 1'b1:1'b0;
+always@(posedge iClock)
+begin
+    if(!iResetn)
+         FrameCounter <= 5'd0;
+    else if(FrameCounter==5'd14)
+          FrameCounter <= 5'd0;
+	 else if((cnt_en)&&(cnt_pluse))
+	       FrameCounter <=FrameCounter+1'b1;
+	 else if(cnt_en)
+			 FrameCounter <= FrameCounter;
+	 else 
+	       FrameCounter <= 5'd0;
+end 
+
+reg [6:0] CounterY;	
+reg [7:0] CounterX;
+reg plot_en;
+reg load_en;
+reg Eraser;	
+reg flage;	
+reg [1:0]R_state;  
+always@(posedge iClock or negedge iResetn)
+begin
+    if(!iResetn)
+        begin
+            CounterX <=  8'd0;
+            CounterY <=  7'd0; 
+            R_state <=  2'b00;
+				plot_en<=1'b1;
+				oPlot<=1'b1;
+				load_en<=1'b0;
+				Eraser<=1'b0;
+        end
+    else if(move_pixel)    
+        begin 
+            case(R_state)
+                2'b00: // 图片往右下方移动
+                    begin 
+						      plot_en<=1'b1;
+				            oPlot<=1'b1;
+								Eraser<=1'b1;
+                        CounterX     <=  CounterX + 1'b1;
+                        CounterY     <=  CounterY + 1'b1;
+                        if(CounterX + X_BOXSIZE == X_SCREENSIZE) // 如果碰到右边框
+								begin
+									if((CounterY + Y_BOXSIZE) == Y_SCREENSIZE) // 如果碰到下边框
+										R_state <=  2'b11;
+									else
+										R_state <=  2'b10;
+								end
+                        else if((CounterY + Y_BOXSIZE) == Y_SCREENSIZE) // 如果碰到下边框
+                            R_state <=  2'b01;                            
+                    end
+                2'b01: // 图片往右上方移动
+                    begin 
+						      plot_en<=1'b1;
+				            oPlot<=1'b1;
+								Eraser<=1'b1;
+                        CounterX     <=  CounterX + 1'b1;
+                        CounterY     <=  CounterY - 1'b1;
+                        if(CounterX + X_BOXSIZE == X_SCREENSIZE) // 如果碰到右边框
+								begin
+									if(CounterY == 1'b1)     // 如果碰到上边框
+										R_state <=  2'b01;
+									else 
+                              R_state <=  2'b11;
+								end
+                        else if(CounterY == 1'b1)     // 如果碰到上边框
+                            R_state <=  2'b00;
+                    end
+                2'b10: // 图片往左下方移动
+                    begin 
+						      plot_en<=1'b1;
+				            oPlot<=1'b1;
+								Eraser<=1'b1;
+                        CounterX     <=  CounterX - 1'b1;
+                        CounterY     <=  CounterY + 1'b1;
+                        if(CounterX == 1'b1)    // 如果碰到左边框
+								begin
+									if(CounterY + Y_BOXSIZE == Y_SCREENSIZE) // 如果碰到下边框
+										R_state <=  2'b01;
+									else
+                              R_state <=  2'b00;
+								end
+                        else if(CounterY + Y_BOXSIZE == Y_SCREENSIZE) // 如果碰到下边框
+                            R_state <=  2'b11;
+                    end
+                2'b11: // 图片往左上方移动
+                    begin 
+						      plot_en<=1'b1;
+				            oPlot<=1'b1;
+								Eraser<=1'b1;
+                        CounterX     <=  CounterX - 1'b1;
+                        CounterY     <=  CounterY - 1'b1;
+                        if(CounterX == 1'b1)    // 如果碰到左边框
+								begin
+									if(CounterY == 1'b1) // 如果碰到上边框
+                            R_state <=  2'b00;
+									else
+                            R_state <=  2'b01;
+								end
+                        else if(CounterY == 1'b1) // 如果碰到上边框
+                            R_state <=  2'b10;
+                    end
+                default:R_state <=  2'b00;            
+            endcase       
+        end
+		 else if(flage)
+		 begin
+			Eraser<=1'b0;
+			load_en<=1'b1;
+	 	 end
+		else if((oX ==CounterX+ 7'd3) && (oY ==CounterY+ 7'd3))
+			begin
+				plot_en<=1'b1;
+				oPlot<=1'b1;
+			end
+		else  begin load_en<=1'b0; oPlot<=1'b1;end
+		
+end     
+reg [7:0]oX_r;
+reg [6:0]oY_r;
+always@(posedge iClock) 
+begin
+   if(!iResetn) 
+	begin
+      oX_r <= 1'b0;
+		oY_r <= 1'b0;
+	end
+	else if(!Eraser)
+	begin
+		oX_r <= CounterX;
+		oY_r <= CounterY;
+	end
+   else
+		begin
+		oX_r <= oX_r;
+		oY_r <= oY_r;
+	end
+end
+//X
+always@(posedge iClock) 
+begin
+   if(!iResetn) 
+	begin
+      oX <= 1'b0;
+		oColour<=3'd3;
+	end
+	else if(move_pixel)
+		oX <= oX_r;
+	else if(Eraser)
+		begin
+		   oColour<=3'd3;
+		   if((oY == oY_r+7'd3)&(oX == oX_r+7'd3))
+				oX <=oX;
+			else if(oX ==oX_r+ 8'd3)
+				oX <= oX_r;
+			else 
+				oX <= oX + 8'd1;
+		end
+	else if(load_en)
+   begin	
+			oX <= CounterX;
+			oColour<=3'd3;
+	end
+	else if(plot_en)
+		begin	
+	         oColour<=3'd3;
+		     if((oX ==CounterX+ 8'd3)&(oY != CounterY+7'd3))
+					oX <= CounterX;
+				else if((oY == CounterY+7'd3)&(oX ==CounterX+ 8'd3))
+					oX <= oX;
+				else
+					oX <= oX + 8'd1;
+		end
+	else
+		oX <= oX;
+ end
+  //y
+  always@(posedge iClock) begin
+    if(!iResetn) 
+	 begin
+      oY <= 1'b0;
+		cnt_en<=1'b0;
+		flage<=1'b0;
+	 end
+	 else if(move_pixel)
+		oY <=oY_r;
+	 else if(Eraser)
+		begin
+			if((oY == oY_r+7'd3)&(oX == oX_r+7'd3))
+			begin
+				flage<=1'b1;
+				oY <=oY;
+			end
+			else if(oX == oX_r+8'd3)
+				oY <= oY + 7'd1;
+		end
+	 else if(load_en) 
+	 begin 
+			oY <= CounterY;
+			flage<=1'b0;
+	 end
+	else if((oX ==CounterX+ 7'd3)&(plot_en))
+	begin
+		if(oY ==CounterY+ 7'd3)
+			begin
+			   oY <= oY;
+				cnt_en<=1'b1;
+			end
+		else
+			begin
+			oY <= oY + 7'd1;
+			cnt_en<=1'b0;
+			end
+	end
+	else 
+	begin
+		 oY <= oY;
+		 cnt_en<=cnt_en;
+	end
+ end
+
+endmodule // part3
+
+
